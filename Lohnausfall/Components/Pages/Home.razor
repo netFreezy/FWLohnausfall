@@ -77,9 +77,9 @@
         try
         {
             EmergencyDurationCalculation emergencyDuration = new(_start, _end);
-            (double totalTime, TimeSpan ende) = emergencyDuration.GetDuration();
+            (double totalTime, TimeSpan end) = emergencyDuration.GetDuration();
 
-            var success = GeneratePdf(totalTime, ende);
+            var success = GeneratePdf(totalTime, end);
             var printSuccess = Print();
 
             if (success && printSuccess) Snackbar.Add("Lohnausfall wurde erfolgreich generiert", Severity.Success);
@@ -152,7 +152,7 @@
                 process.Start();
 
                 Thread.Sleep(3000);
-                if (false == process.CloseMainWindow()) process.Kill();
+                if (process.CloseMainWindow() is false) process.Kill();
             }
 
             DeleteAllFiles();
