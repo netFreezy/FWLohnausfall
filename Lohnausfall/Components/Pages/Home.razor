@@ -1,0 +1,173 @@
+﻿@page "/"
+
+@inject ISnackbar Snackbar
+
+@using Lohnausfall.Components.Classes
+@using Lohnausfall.Components.Models
+@using Portfolio.Components.Database
+@using Syncfusion.Pdf.Parsing
+@using System.Diagnostics
+@using iTextSharp.text.pdf
+
+<PageTitle>Lohnausfall - Feuerwehr Saalhausen</PageTitle>
+
+<MudStack Row Justify=Justify.SpaceBetween>
+    <MudText Typo=Typo.h4 Color=Color.Secondary Style="margin-bottom: 0px">Lohnausfall</MudText>
+    <MudButton Disabled=@(string.IsNullOrWhiteSpace(_emergencyNumber) || _selectedMembers.ToList().Count is 0) Style="height: 65%" StartIcon=@Icons.Material.Filled.Check
+        Variant=Variant.Outlined OnClick=Generate>Generieren</MudButton>
+</MudStack>
+
+<MudGrid Style="margin-top: 10px" Spacing=1 Justify=Justify.FlexStart>
+    <MudItem xs=3>
+        <MudTextField Variant=Variant.Outlined Immediate Adornment=Adornment.End AdornmentIcon=@Icons.Material.Filled.Tag Clearable Label="Einsatznummer"
+            @bind-Value=_emergencyNumber />
+    </MudItem>
+
+    <MudItem xs=3>
+        <MudDatePicker Variant=Variant.Outlined Adornment=Adornment.End AdornmentIcon=@Icons.Material.Filled.CalendarMonth Label="Datum" Date="_date" 
+            DateChanged="(value) => _date = (DateTime)value!" />
+    </MudItem>
+
+    <MudItem xs=3>
+        <MudTimePicker Variant=Variant.Outlined Adornment=Adornment.End AdornmentIcon=@Icons.Material.Filled.Timer Label="Start" Time=_start 
+            TimeChanged="(value) => _start = (TimeSpan)value!" />
+    </MudItem>
+
+    <MudItem xs=3>
+        <MudTimePicker Variant=Variant.Outlined Adornment=Adornment.End AdornmentIcon=@Icons.Material.Filled.Timer Label="Ende" Time=_end 
+            TimeChanged="(value) => _end = (TimeSpan)value!"/>
+    </MudItem>
+
+    <MudItem xs=12>
+        <MudSelect T="FWMemberModel" MultiSelection Clearable Variant=Variant.Outlined Adornment=Adornment.End AdornmentIcon=@Icons.Material.Filled.People
+            AnchorOrigin=Origin.BottomCenter Label="Beteiligte Personen" ToStringFunc=@(m => m.Name) @bind-selectedvalues=_selectedMembers>
+            @foreach (var member in _members)
+            {
+                <MudSelectItem T="FWMemberModel" Value=member>@member.Name</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private string _emergencyNumber = "";
+    private DateTime _date = DateTime.Today;
+    private TimeSpan _start = DateTime.Now.TimeOfDay;
+    private TimeSpan _end = DateTime.Now.TimeOfDay;
+
+    private List<FWMemberModel> _members = [];
+    private IEnumerable<FWMemberModel> _selectedMembers = new HashSet<FWMemberModel>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _members = (await StaticDBRequests.GetAllMembersAsync())
+                .OrderBy(member => member.Name.Split(' ')[1])
+                .ToList();
+        }
+        catch (Exception e)
+        {
+            Snackbar.Add(e.Message, Severity.Error);
+        }
+    }
+
+    private void Generate()
+    {
+        try
+        {
+            EmergencyDurationCalculation emergencyDuration = new(_start, _end);
+            (double totalTime, TimeSpan ende) = emergencyDuration.GetDuration();
+
+            var success = GeneratePdf(totalTime, ende);
+            var printSuccess = Print();
+
+            if (success && printSuccess) Snackbar.Add("Lohnausfall wurde erfolgreich generiert", Severity.Success);
+        }
+        catch (Exception e)
+        {
+            Snackbar.Add(e.Message, Severity.Error);
+        }
+    }
+
+    private bool GeneratePdf(double totalTime, TimeSpan end)
+    {
+        try
+        {
+            DeleteAllFiles();
+
+            var members = _selectedMembers.ToList();
+
+            for (int i = 0; i < members.Count; i += 2)
+            {
+                PdfReader reader = new($"{AppDomain.CurrentDomain.BaseDirectory}Template.pdf");
+                FileStream fileStream = new($"{AppDomain.CurrentDomain.BaseDirectory}Lohnausfall\\Lohnausfall_{i}.pdf", FileMode.Create);
+                PdfStamper pdfStamper = new(reader, fileStream);
+
+                var fields = pdfStamper.AcroFields;
+
+                fields.SetField("Textfeld#2011", members[i].Name);
+                fields.SetField("Textfeld#201", members[i].Residence);
+                fields.SetField("Datumsfeld#201", _date.ToString("dd.MM.yyyy"));
+                fields.SetField("Zeitfeld#201", _start.ToString(@"hh\:mm"));
+                fields.SetField("Zeitfeld#2011", end.ToString(@"hh\:mm"));
+                fields.SetField("Textfeld#206", $"Einsatz {_emergencyNumber}");
+                fields.SetField("Textfeld#204", $"{totalTime}");
+                fields.SetField("Datumsfeld#202", DateTime.Now.Date.ToString("dd.MM.yyyy"));
+
+                if (i < members.Count - 1)
+                {
+                    fields.SetField("Textfeld#2013", members[i + 1].Name);
+                    fields.SetField("Textfeld#2012", members[i + 1].Residence);
+                    fields.SetField("Datumsfeld#2011", _date.ToString("dd.MM.yyyy"));
+                    fields.SetField("Zeitfeld#2012", _start.ToString(@"hh\:mm"));
+                    fields.SetField("Zeitfeld#2013", end.ToString(@"hh\:mm"));
+                    fields.SetField("Textfeld#205", $"Einsatz {_emergencyNumber}");
+                    fields.SetField("Textfeld#202", $"{totalTime}");
+                    fields.SetField("Datumsfeld#2021", DateTime.Now.Date.ToString("dd.MM.yyyy"));
+                }
+
+                pdfStamper.Close();
+            }
+
+            return true;
+        }
+        catch (Exception e)
+        {
+            Snackbar.Add(e.Message, Severity.Error);
+            return false;
+        }
+    }
+
+    private bool Print()
+    {
+        try
+        {
+            foreach (var pdf in Directory.EnumerateFiles($"{AppDomain.CurrentDomain.BaseDirectory}Lohnausfall"))
+            {
+                var command = $"Start-Process –FilePath \"{pdf}\" -verb Print";
+                ProcessStartInfo processInfo = new("Powershell.exe", command);
+
+                Process process = new() { StartInfo = processInfo };
+                process.Start();
+
+                Thread.Sleep(3000);
+                if (false == process.CloseMainWindow()) process.Kill();
+            }
+
+            DeleteAllFiles();
+
+            return true;
+        }
+        catch (Exception e)
+        {
+            return false;
+        }
+    }
+
+    private void DeleteAllFiles()
+    {
+        var directoryInfo = new DirectoryInfo($"{AppDomain.CurrentDomain.BaseDirectory}Lohnausfall");
+        foreach (var file in directoryInfo.GetFiles()) file.Delete();
+    }
+}

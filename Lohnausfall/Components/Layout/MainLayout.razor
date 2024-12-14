@@ -1,0 +1,61 @@
+﻿@using MudBlazor.Utilities
+
+@inherits LayoutComponentBase
+
+<MudLayout>
+    <MudAppBar Elevation=1>
+        <MudText Style="margin-left: 17%; margin-right: 3%; color: white" Typo=Typo.h4>Feuerwehr Saalhausen</MudText>
+
+        <MudNavLink Style="width: fit-content" Href="/">Lohnausfall</MudNavLink>
+        <MudNavLink Style="width: fit-content" Href="/drucker">Drucker</MudNavLink>
+
+        <MudSpacer />
+
+        <MudIconButton Style="margin-right: 17%" Icon=@(IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode) 
+            @onclick="() => IsDarkMode = !IsDarkMode" />
+    </MudAppBar>
+
+    <MudMainContent Class="pt-16 px-16">
+        <MudContainer Class="p-4" Style="color: white">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+
+    <MudThemeProvider Theme=customTheme IsDarkMode=IsDarkMode />
+    <MudPopoverProvider />
+    <MudDialogProvider />
+    <MudSnackbarProvider />
+</MudLayout>
+
+@code {
+    public bool IsDarkMode { get; set; } = true;
+
+    MudTheme customTheme = new MudTheme() {
+        Typography = new Typography() {
+            Default = new Default() {
+                FontFamily = new[] { "Source Code Pro", "Helvetica", "Arial", "sans-serif" }
+            }
+        },
+        PaletteDark = new PaletteDark() {
+            AppbarBackground = "#161618",
+            Background = "#1b1b1c",
+            Primary = "#565759",
+            Secondary = "#ffffff"
+        },
+        PaletteLight = new PaletteLight() {
+            Primary = "rgba(89, 74, 226, 1)",
+            Secondary = "rgba(89, 74, 226, 1)",
+        }
+    };
+}
+
+<style>
+    .mud-nav-link .mud-nav-link-text {
+        width: 100%;
+        text-align: start;
+        margin-left: 0px; 
+        margin-inline-start: 0px;
+        margin-inline-end: unset;
+        letter-spacing: 0;
+    }
+</style>
