@@ -15,8 +15,8 @@
             @onclick="() => IsDarkMode = !IsDarkMode" />
     </MudAppBar>
 
-    <MudMainContent Class="pt-16 px-16">
-        <MudContainer Class="p-4" Style="color: white">
+    <MudMainContent Style="margin-left: 17%; margin-right: 17%">
+        <MudContainer Style="color: white; padding-top: 24px">
             @Body
         </MudContainer>
     </MudMainContent>
@@ -57,5 +57,10 @@
         margin-inline-start: 0px;
         margin-inline-end: unset;
         letter-spacing: 0;
+    }
+
+    .mud-container--gutters {
+         padding-left: 0px; 
+         padding-right: 0px; 
     }
 </style>
