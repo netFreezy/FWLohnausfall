@@ -6,6 +6,7 @@
 @using System.Diagnostics
 @using System.Collections.ObjectModel
 @using System.Drawing.Printing
+@using Lohnausfall.Core.Models
 
 <PageTitle>Lohnausfall - Feuerwehr Saalhausen</PageTitle>
 
@@ -13,11 +14,11 @@
     <MudText Typo=Typo.h4 Color=Color.Secondary Style="margin-bottom: 0px">Drucker</MudText>
 </MudStack>
 
-<MudSelect T=Models.PrinterModel Style="margin-top: 22px" Variant=Variant.Outlined Adornment=Adornment.End AdornmentIcon=@Icons.Material.Filled.Print 
+<MudSelect T=Core.Models.WindowsPrinter Style="margin-top: 22px" Variant=Variant.Outlined Adornment=Adornment.End AdornmentIcon=@Icons.Material.Filled.Print 
     AnchorOrigin=Origin.BottomCenter Label="Drucker auswählen" Value=_selectedPrinter ValueChanged="(value) => { _selectedPrinter = value; ChangeDefaultPrinter(); }">
     @foreach (var printer in _installedPrinters)
     {
-        <MudSelectItem T=Models.PrinterModel Value=printer>@printer.Name</MudSelectItem>
+        <MudSelectItem T=Core.Models.WindowsPrinter Value=printer>@printer.Name</MudSelectItem>
     }
 </MudSelect>
 
@@ -28,18 +29,18 @@
         public static extern bool SetDefaultPrinter(string Printer);
     }
 
-    private List<Models.PrinterModel> _installedPrinters = [];
-    private Models.PrinterModel? _selectedPrinter;
+    private List<Core.Models.WindowsPrinter> _installedPrinters = [];
+    private Core.Models.WindowsPrinter? _selectedPrinter;
     private PrinterSettings _printerSettings = new();
 
     protected override Task OnInitializedAsync()
     {
         try
         {
-            var printers = new List<Models.PrinterModel>();
+            var printers = new List<Core.Models.WindowsPrinter>();
 
             foreach (var printer in PrinterSettings.InstalledPrinters)
-                printers.Add(new Models.PrinterModel(_installedPrinters.Count, printer.ToString()!, printer.ToString()! == _printerSettings.PrinterName));
+                printers.Add(new Core.Models.WindowsPrinter(_installedPrinters.Count, printer.ToString()!, printer.ToString()! == _printerSettings.PrinterName));
 
             _selectedPrinter = printers.FirstOrDefault(printer => printer.IsDefaultPrinter == true);
             _installedPrinters = printers.OrderBy(printer => printer.Name).ToList();

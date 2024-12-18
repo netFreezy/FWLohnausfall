@@ -1,0 +1,57 @@
+﻿@using Lohnausfall.Components.Interfaces
+@using Lohnausfall.Core.Models
+
+@inject ISnackbar Snackbar
+@inject IResidencesInterface ResidenceService
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Row Justify=Justify.SpaceEvenly>
+            <MudTextField Variant=Variant.Outlined Immediate Adornment=Adornment.End AdornmentIcon=@Icons.Material.Filled.Person Clearable Label="Vorname"
+                          @bind-Value=Member!.Firstname />
+            <MudTextField Variant=Variant.Outlined Immediate Adornment=Adornment.End AdornmentIcon=@Icons.Material.Filled.Person Clearable Label="Nachname"
+                          @bind-Value=Member.Lastname />
+            <MudSelect Style="width: 15vw" T="Residence" Clearable Variant=Variant.Outlined Adornment=Adornment.End AdornmentIcon=@Icons.Material.Filled.House
+                       AnchorOrigin=Origin.BottomCenter Label="Wohnort" @bind-value=Member.Residence>
+                @foreach (var residence in _residences)
+                {
+                    <MudSelectItem T="Residence" Value=residence>@residence.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Abbrechen</MudButton>
+        <MudButton Disabled=@(string.IsNullOrWhiteSpace(Member!.Firstname) || string.IsNullOrWhiteSpace(Member!.Lastname))
+            Variant=Variant.Outlined OnClick=Submit>Aktualisieren</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; }
+
+    [Parameter]
+    public Member? Member { get; set; }
+
+    private List<Residence> _residences = [];
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            _residences = ResidenceService.GetAll();
+        }
+        catch (Exception e)
+        {
+            Snackbar.Add(e.Message, Severity.Error);
+        }
+    }
+
+    private void Submit()
+    {
+        MudDialog.Close(DialogResult.Ok(Member));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

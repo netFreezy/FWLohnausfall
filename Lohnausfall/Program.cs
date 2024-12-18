@@ -1,4 +1,8 @@
 using Lohnausfall.Components;
+using Lohnausfall.Components.Interfaces;
+using Lohnausfall.Components.Services;
+using Lohnausfall.Core.Models;
+using MudBlazor;
 using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -7,7 +11,16 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.AddMudServices();
+builder.Services.AddMudServices(config =>
+    {
+        config.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.TopCenter;
+        config.SnackbarConfiguration.VisibleStateDuration = 3000;
+    }
+);
+
+builder.Services.AddDbContext<ApplicationDBContext>();
+builder.Services.AddScoped<IMembersService, MembersService>();
+builder.Services.AddScoped<IResidencesInterface, ResidencesService>();
 
 var app = builder.Build();
 

@@ -1,10 +1,11 @@
 ﻿@page "/"
 
 @inject ISnackbar Snackbar
+@inject IMembersService MembersService
 
 @using Lohnausfall.Components.Classes
-@using Lohnausfall.Components.Models
-@using Portfolio.Components.Database
+@using Lohnausfall.Components.Interfaces
+@using Lohnausfall.Core.Models
 @using Syncfusion.Pdf.Parsing
 @using System.Diagnostics
 @using iTextSharp.text.pdf
@@ -39,11 +40,12 @@
     </MudItem>
 
     <MudItem xs=12>
-        <MudSelect T="FWMemberModel" MultiSelection Clearable Variant=Variant.Outlined Adornment=Adornment.End AdornmentIcon=@Icons.Material.Filled.People
-            AnchorOrigin=Origin.BottomCenter Label="Beteiligte Personen" ToStringFunc=@(m => m.Name) @bind-selectedvalues=_selectedMembers>
+        <MudSelect T="Member" MultiSelection Clearable Variant=Variant.Outlined Adornment=Adornment.End AdornmentIcon=@Icons.Material.Filled.People
+                   AnchorOrigin=Origin.BottomCenter Label="Beteiligte Mitglieder auswählen" ToStringFunc=@(member => $"{member.Firstname} {member.Lastname}") 
+                   @bind-selectedvalues=_selectedMembers>
             @foreach (var member in _members)
             {
-                <MudSelectItem T="FWMemberModel" Value=member>@member.Name</MudSelectItem>
+                <MudSelectItem T="Member" Value=member>@($"{member.Firstname} {member.Lastname}")</MudSelectItem>
             }
         </MudSelect>
     </MudItem>
@@ -55,15 +57,15 @@
     private TimeSpan _start = DateTime.Now.TimeOfDay;
     private TimeSpan _end = DateTime.Now.TimeOfDay;
 
-    private List<FWMemberModel> _members = [];
-    private IEnumerable<FWMemberModel> _selectedMembers = new HashSet<FWMemberModel>();
+    private List<Member> _members = [];
+    private IEnumerable<Member> _selectedMembers = new HashSet<Member>();
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
         try
         {
-            _members = (await StaticDBRequests.GetAllMembersAsync())
-                .OrderBy(member => member.Name.Split(' ')[1])
+            _members = MembersService.GetAll()
+                .OrderBy(member => member.Lastname)
                 .ToList();
         }
         catch (Exception e)
@@ -106,8 +108,8 @@
 
                 var fields = pdfStamper.AcroFields;
 
-                fields.SetField("Textfeld#2011", members[i].Name);
-                fields.SetField("Textfeld#201", members[i].Residence);
+                fields.SetField("Textfeld#2011", $"{members[i].Firstname} {members[i].Lastname}");
+                fields.SetField("Textfeld#201", members[i].Residence!.Name);
                 fields.SetField("Datumsfeld#201", _date.ToString("dd.MM.yyyy"));
                 fields.SetField("Zeitfeld#201", _start.ToString(@"hh\:mm"));
                 fields.SetField("Zeitfeld#2011", end.ToString(@"hh\:mm"));
@@ -117,8 +119,8 @@
 
                 if (i < members.Count - 1)
                 {
-                    fields.SetField("Textfeld#2013", members[i + 1].Name);
-                    fields.SetField("Textfeld#2012", members[i + 1].Residence);
+                    fields.SetField("Textfeld#2013", $"{members[i + 1].Firstname} {members[i + 1].Lastname}");
+                    fields.SetField("Textfeld#2012", members[i + 1].Residence!.Name);
                     fields.SetField("Datumsfeld#2011", _date.ToString("dd.MM.yyyy"));
                     fields.SetField("Zeitfeld#2012", _start.ToString(@"hh\:mm"));
                     fields.SetField("Zeitfeld#2013", end.ToString(@"hh\:mm"));

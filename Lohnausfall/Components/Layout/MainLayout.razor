@@ -3,28 +3,31 @@
 @inherits LayoutComponentBase
 
 <MudLayout>
-    <MudAppBar Elevation=1>
-        <MudText Style="margin-left: 17%; margin-right: 3%; color: white" Typo=Typo.h4>Feuerwehr Saalhausen</MudText>
+    <CascadingValue Value=IsDarkMode>
+        <MudAppBar Elevation=1>
+            <MudText Style="margin-left: 17%; margin-right: 3%; color: white" Typo=Typo.h4>Feuerwehr Saalhausen</MudText>
 
-        <MudNavLink Style="width: fit-content" Href="/">Lohnausfall</MudNavLink>
-        <MudNavLink Style="width: fit-content" Href="/drucker">Drucker</MudNavLink>
+            <MudNavLink Style="width: fit-content" Href="/">Lohnausfall</MudNavLink>
+            <MudNavLink Style="width: fit-content" Href="/mitglieder">Mitglieder</MudNavLink>
+            <MudNavLink Style="width: fit-content" Href="/drucker">Drucker</MudNavLink>
 
-        <MudSpacer />
+            <MudSpacer />
 
-        <MudIconButton Style="margin-right: 17%" Icon=@(IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode) 
-            @onclick="() => IsDarkMode = !IsDarkMode" />
-    </MudAppBar>
+            <MudIconButton Style="margin-right: 17%" Icon=@(IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)
+                           @onclick="() => IsDarkMode = !IsDarkMode" />
+        </MudAppBar>
 
-    <MudMainContent Style="margin-left: 18%; margin-right: 18%">
-        <MudContainer Style="color: white; padding-top: 24px">
-            @Body
-        </MudContainer>
-    </MudMainContent>
+        <MudMainContent Style="margin-left: 18%; margin-right: 18%">
+            <MudContainer Style="color: white; padding-top: 24px">
+                @Body
+            </MudContainer>
+        </MudMainContent>
 
-    <MudThemeProvider Theme=customTheme IsDarkMode=IsDarkMode />
-    <MudPopoverProvider />
-    <MudDialogProvider />
-    <MudSnackbarProvider />
+        <MudThemeProvider Theme=customTheme IsDarkMode=IsDarkMode />
+        <MudPopoverProvider />
+        <MudDialogProvider />
+        <MudSnackbarProvider />
+    </CascadingValue>
 </MudLayout>
 
 @code {

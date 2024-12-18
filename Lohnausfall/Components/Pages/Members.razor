@@ -1,0 +1,175 @@
+﻿@page "/mitglieder"
+
+@inject ISnackbar Snackbar
+@inject IMembersService MembersService
+@inject IDialogService DialogService
+
+@using Lohnausfall.Components.Dialogs
+@using Lohnausfall.Components.Interfaces
+@using Lohnausfall.Core.Models
+@using Newtonsoft.Json
+
+<PageTitle>Lohnausfall - Feuerwehr Saalhausen</PageTitle>
+
+<MudStack Style="margin-bottom: 20px" Row Justify=Justify.SpaceBetween>
+    <MudText Typo=Typo.h4 Color=Color.Secondary Style="margin-bottom: 0px">Mitglieder</MudText>
+    <MudButton Style="height: 65%" StartIcon=@Icons.Material.Filled.Add Variant=Variant.Outlined OnClick=AddMemberAsync>Hinzufügen</MudButton>
+</MudStack>
+
+<MudTextField Variant=Variant.Outlined Immediate Label="Suchen..." Adornment=Adornment.Start AdornmentIcon=@Icons.Material.Filled.Search IconSize=Size.Medium 
+    Clearable @bind-Value=_searchString />
+
+<MudCard Style="margin-top: 10px; border-radius: 5px" Elevation="4">
+    <MudTable Virtualize Style=@(IsDarkMode ? "cursor: pointer; background: #1b1b1c" : "cursor: pointer; background: white") Dense Hover Striped T="Member" Items=_members
+        Filter="new Func<Member, bool>(FilterFunc)" OnRowClick="async (args) => await UpdateMemberAsync(args.Item!)">
+        <HeaderContent>
+            <MudTh><MudTableSortLabel SortBy="new Func<Member, object>(x => x.Id)">Id</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<Member, object>(x => x.Firstname!)">Vorname</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<Member, object>(x => x.Lastname!)">Nachname</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<Member, object>(x => x.Residence!.Name!)">Wohnort</MudTableSortLabel></MudTh>
+
+            <MudTh>Aktionen</MudTh>
+        </HeaderContent>
+
+        <RowTemplate>
+            <MudTd DataLabel="Id">@context.Id</MudTd>
+            <MudTd DataLabel="Vorname">@context.Firstname</MudTd>
+            <MudTd DataLabel="Nachname">@context.Lastname</MudTd>
+            <MudTd DataLabel="Wohnort">@context.Residence!.Name</MudTd>
+
+            <MudTd Style="width: 10%">
+                <MudStack Row Justify=Justify.SpaceEvenly>
+                    <MudIconButton Color=Color.Warning Icon=@Icons.Material.Filled.Edit OnClick="async () => await UpdateMemberAsync(context)" />
+                    <MudIconButton Color=Color.Error Icon=@Icons.Material.Filled.Delete OnClick="async () => await DeleteMemberAsync(context)" />
+                </MudStack>
+            </MudTd>
+        </RowTemplate>
+
+        <PagerContent>
+            <MudTablePager HideRowsPerPage />
+        </PagerContent>
+    </MudTable>
+</MudCard>
+
+@code {
+    [CascadingParameter]
+    public bool IsDarkMode { get; set; }
+
+    private List<Member> _members = [];
+    private string _searchString = "";
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            GetMembers();
+        }
+        catch (Exception e)
+        {
+            Snackbar.Add(e.Message, Severity.Error);
+        }
+    }
+
+    private void GetMembers()
+    {
+        _members = MembersService.GetAll()
+             .OrderBy(member => member.Lastname)
+             .ToList();
+    }
+
+    private async Task AddMemberAsync()
+    {
+        try
+        {
+            DialogOptions options = new() { MaxWidth = MaxWidth.Large, CloseButton = true, CloseOnEscapeKey = true };
+            var dialog = await DialogService.ShowAsync<AddMemberDialog>("Mitglied hinzufügen", options);
+            var result = await dialog.Result;
+
+            if (result!.Canceled) return;
+            var member = (Member)result.Data!;
+
+            await MembersService.AddAsync(member);
+            GetMembers();
+            StateHasChanged();
+
+            Snackbar.Add($"Mitglied {member.Firstname} {member.Lastname} wurde erfolgreich hinzugefügt.", Severity.Success);
+        }
+        catch (Exception e)
+        {
+            Snackbar.Add(e.Message, Severity.Error);
+        }
+    }
+
+    private async Task UpdateMemberAsync(Member member)
+    {
+        try
+        {
+            Member clonedMember = new()
+            {
+                Id = member.Id,
+                Firstname = member.Firstname,
+                Lastname = member.Lastname,
+                Residence = member.Residence
+            };
+
+            DialogOptions options = new() { MaxWidth = MaxWidth.Large, CloseButton = true, CloseOnEscapeKey = true, BackdropClick = true };
+            DialogParameters<DeleteMemberDialog> parameters = new () { { x => x.Member, clonedMember }, };
+            var dialog = await DialogService.ShowAsync<UpdateMemberDialog>("Mitglied bearbeiten", parameters, options);
+            var result = await dialog.Result;
+
+            if (result!.Canceled) return;
+
+            var updatedMember = (Member)result.Data!;
+            member.Firstname = updatedMember.Firstname;
+            member.Lastname = updatedMember.Lastname;
+            member.Residence = updatedMember.Residence;
+
+            await MembersService.UpdateAsync(member);
+            StateHasChanged();
+
+            Snackbar.Add($"Mitglied {updatedMember.Firstname} {updatedMember.Lastname} wurde erfolgreich bearbeitet.", Severity.Success);
+        }
+        catch (Exception e)
+        {
+            Snackbar.Add(e.Message, Severity.Error);
+        }
+    }
+
+    private async Task DeleteMemberAsync(Member member)
+    {
+        try
+        {
+            DialogOptions options = new() { FullWidth = true, CloseButton = true, CloseOnEscapeKey = true };
+            DialogParameters<DeleteMemberDialog> parameters = new() { { x => x.Member, member }, };
+            var dialog = await DialogService.ShowAsync<DeleteMemberDialog>("Mitglied löschen", parameters, options);
+            var result = await dialog.Result;
+
+            if (result!.Canceled) return;
+
+            await MembersService.RemoveAsync(member);
+            GetMembers();
+            StateHasChanged();
+
+            Snackbar.Add($"Mitglied {member.Firstname} {member.Lastname} wurde erfolgreich gelöscht.", Severity.Success);
+        }
+        catch (Exception e)
+        {
+            Snackbar.Add(e.Message, Severity.Error);
+        }
+    }
+
+    private bool FilterFunc(Member member)
+    {
+        if (string.IsNullOrWhiteSpace(_searchString))
+            return true;
+        if (member.Id.ToString().Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (member.Firstname!.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (member.Lastname!.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (member.Residence!.Name!.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        return false;
+    }
+}

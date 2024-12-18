@@ -1,6 +1,6 @@
-﻿namespace Lohnausfall.Components.Models
+﻿namespace Lohnausfall.Core.Models
 {
-    public class PrinterModel (int id, string name, bool isDefaultPrinter = false)
+    public class WindowsPrinter (int id, string name, bool isDefaultPrinter = false)
     {
         public int Id { get; set; } = id;
         public string Name { get; set; } = name;

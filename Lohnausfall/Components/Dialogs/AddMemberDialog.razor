@@ -1,0 +1,60 @@
+﻿@using Lohnausfall.Components.Interfaces
+@using Lohnausfall.Components.Services
+@using Lohnausfall.Core.Models
+
+@inject ISnackbar Snackbar
+@inject IResidencesInterface ResidenceService
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Row Justify=Justify.SpaceEvenly>
+            <MudTextField Variant=Variant.Outlined Immediate Adornment=Adornment.End AdornmentIcon=@Icons.Material.Filled.Person Clearable Label="Vorname"
+                          @bind-Value=_firstname />
+            <MudTextField Variant=Variant.Outlined Immediate Adornment=Adornment.End AdornmentIcon=@Icons.Material.Filled.Person Clearable Label="Nachname"
+                          @bind-Value=_lastname />
+            <MudSelect Style="width: 15vw" T="Residence" Immediate Clearable Variant=Variant.Outlined Adornment=Adornment.End AdornmentIcon=@Icons.Material.Filled.House
+                       AnchorOrigin=Origin.BottomCenter Label="Wohnort" @bind-value=_selectedResidence>
+                @foreach (var residence in _residences)
+                {
+                    <MudSelectItem T="Residence" Value=residence>@residence.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Abbrechen</MudButton>
+        <MudButton Disabled=@(string.IsNullOrWhiteSpace(_firstname) || string.IsNullOrWhiteSpace(_lastname) || _selectedResidence is null)
+            Variant=Variant.Outlined OnClick=Submit>Hinzufügen</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; }
+
+    private string _firstname = "";
+    private string _lastname = "";
+    private Residence? _selectedResidence;
+
+    private List<Residence> _residences = [];
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            _residences = ResidenceService.GetAll();
+        }
+        catch (Exception e)
+        {
+            Snackbar.Add(e.Message, Severity.Error);
+        }
+    }
+
+    private void Submit()
+    {
+        Member member = new() { Firstname = _firstname, Lastname = _lastname, Residence = _selectedResidence };
+        MudDialog.Close(DialogResult.Ok(member));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}
