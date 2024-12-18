@@ -11,7 +11,7 @@
                           @bind-Value=Member!.Firstname />
             <MudTextField Variant=Variant.Outlined Immediate Adornment=Adornment.End AdornmentIcon=@Icons.Material.Filled.Person Clearable Label="Nachname"
                           @bind-Value=Member.Lastname />
-            <MudSelect Style="width: 15vw" T="Residence" Clearable Variant=Variant.Outlined Adornment=Adornment.End AdornmentIcon=@Icons.Material.Filled.House
+            <MudSelect Style="width: 15vw" T="Residence" Clearable Variant=Variant.Outlined Adornment=Adornment.End AdornmentIcon=@Icons.Material.Filled.Home
                        AnchorOrigin=Origin.BottomCenter Label="Wohnort" @bind-value=Member.Residence>
                 @foreach (var residence in _residences)
                 {
