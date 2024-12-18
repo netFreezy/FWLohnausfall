@@ -1,12 +1,13 @@
 ﻿@using MudBlazor.Utilities
 
 @inherits LayoutComponentBase
+@inject NavigationManager Navigation
 
 <MudLayout>
     <CascadingValue Value=IsDarkMode>
         <MudAppBar Elevation=1>
-            <MudText Style="margin-left: 17%; margin-right: 3%; color: white" Typo=Typo.h4>Feuerwehr Saalhausen</MudText>
-
+            <MudText Style="margin-left: 17%; margin-right: 3%; color: white; cursor: pointer" Typo=Typo.h4 
+                @onclick=@(() => Navigation.NavigateTo("/"))>Feuerwehr Saalhausen</MudText>
             <MudNavLink Style="width: fit-content" Href="/">Lohnausfall</MudNavLink>
             <MudNavLink Style="width: fit-content" Href="/mitglieder">Mitglieder</MudNavLink>
             <MudNavLink Style="width: fit-content" Href="/drucker">Drucker</MudNavLink>
