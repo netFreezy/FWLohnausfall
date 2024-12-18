@@ -23,10 +23,10 @@
     <MudTable Virtualize Style=@(IsDarkMode ? "cursor: pointer; background: #1b1b1c" : "cursor: pointer; background: white") Dense Hover Striped T="Member" Items=_members
         Filter="new Func<Member, bool>(FilterFunc)" OnRowClick="async (args) => await UpdateMemberAsync(args.Item!)">
         <HeaderContent>
-            <MudTh><MudTableSortLabel SortBy="new Func<Member, object>(x => x.Id)">Id</MudTableSortLabel></MudTh>
-            <MudTh><MudTableSortLabel SortBy="new Func<Member, object>(x => x.Firstname!)">Vorname</MudTableSortLabel></MudTh>
-            <MudTh><MudTableSortLabel SortBy="new Func<Member, object>(x => x.Lastname!)">Nachname</MudTableSortLabel></MudTh>
-            <MudTh><MudTableSortLabel SortBy="new Func<Member, object>(x => x.Residence!.Name!)">Wohnort</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel Class="bold" SortBy="new Func<Member, object>(x => x.Id)">Id</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel Class="bold" SortBy="new Func<Member, object>(x => x.Firstname!)">Vorname</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel Class="bold" SortBy="new Func<Member, object>(x => x.Lastname!)">Nachname</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel Class="bold" SortBy="new Func<Member, object>(x => x.Residence!.Name!)">Wohnort</MudTableSortLabel></MudTh>
 
             <MudTh>Aktionen</MudTh>
         </HeaderContent>
@@ -169,3 +169,15 @@
 
     private Member CloneMember(Member member) => new() { Id = member.Id, Firstname = member.Firstname, Lastname = member.Lastname,  Residence = member.Residence };
 }
+
+<style>
+    .bold {
+        font-weight: bold;
+    }
+
+    .mud-table-root .mud-table-head .mud-table-cell {
+        color: var(--mud-palette-text-primary);
+        font-weight: 700;
+        line-height: 1.5rem;
+    }
+</style>
