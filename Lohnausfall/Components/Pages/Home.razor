@@ -39,7 +39,12 @@
             TimeChanged="(value) => _end = (TimeSpan)value!"/>
     </MudItem>
 
-    <MudItem xs=12>
+    <MudItem xs=6>
+        <MudNumericField Variant=Variant.Outlined Immediate Adornment=Adornment.End AdornmentIcon=@Icons.Material.Filled.FilterNone Label="Anzahl Bescheinigungen"
+            @bind-Value=_numberOfSheets />
+    </MudItem>
+
+    <MudItem xs=6>
         <MudSelect T="Member" MultiSelection Clearable Variant=Variant.Outlined Adornment=Adornment.End AdornmentIcon=@Icons.Material.Filled.People
                    AnchorOrigin=Origin.BottomCenter Label="Beteiligte Mitglieder auswählen" ToStringFunc=@(member => $"{member.Firstname} {member.Lastname}") 
                    @bind-selectedvalues=_selectedMembers>
@@ -56,6 +61,7 @@
     private DateTime _date = DateTime.Today;
     private TimeSpan _start = DateTime.Now.TimeOfDay;
     private TimeSpan _end = DateTime.Now.TimeOfDay;
+    private int _numberOfSheets = 1;
 
     private List<Member> _members = [];
     private IEnumerable<Member> _selectedMembers = new HashSet<Member>();
@@ -74,6 +80,9 @@
         }
     }
 
+    /// <summary>
+    /// Obermethode zum generieren und drucken des Lohnausfalls basierend auf allen Angaben
+    /// </summary>
     private void Generate()
     {
         try
@@ -82,7 +91,7 @@
             (double totalTime, TimeSpan end) = emergencyDuration.GetDuration();
 
             var success = GeneratePdf(totalTime, end);
-            var printSuccess = Print();
+            var printSuccess = Process();
 
             if (success && printSuccess) Snackbar.Add("Lohnausfall wurde erfolgreich generiert", Severity.Success);
         }
@@ -92,6 +101,12 @@
         }
     }
 
+    /// <summary>
+    /// Generiert alle nötigen Lohnausfall Pdf Dateien.
+    /// </summary>
+    /// <param name="totalTime">Gerundete gesamte Einsatzzeit</param>
+    /// <param name="end">Gerundetes Einsatzende</param>
+    /// <returns></returns>
     private bool GeneratePdf(double totalTime, TimeSpan end)
     {
         try
@@ -100,10 +115,14 @@
 
             var members = _selectedMembers.ToList();
 
+            // Zwei Lohnausfälle können auf einem Blatt stehen
             for (int i = 0; i < members.Count; i += 2)
             {
-                PdfReader reader = new($"{AppDomain.CurrentDomain.BaseDirectory}Template.pdf");
-                FileStream fileStream = new($"{AppDomain.CurrentDomain.BaseDirectory}Lohnausfall\\Lohnausfall_{i}.pdf", FileMode.Create);
+                var templatePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Template.pdf");
+                var outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"Lohnausfall\\Lohnausfall_{i}.pdf");
+
+                using PdfReader reader = new(templatePath);
+                using FileStream fileStream = new(outputPath, FileMode.Create);
                 PdfStamper pdfStamper = new(reader, fileStream);
 
                 var fields = pdfStamper.AcroFields;
@@ -141,29 +160,54 @@
         }
     }
 
-    private bool Print()
+    private bool Process()
     {
         try
         {
-            foreach (var pdf in Directory.EnumerateFiles($"{AppDomain.CurrentDomain.BaseDirectory}Lohnausfall"))
+            // Lohnausfälle drucken
+            var folderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Lohnausfall");
+            if (Directory.Exists(folderPath))
             {
-                var command = $"Start-Process –FilePath \"{pdf}\" -verb Print";
-                ProcessStartInfo processInfo = new("Powershell.exe", command);
-
-                Process process = new() { StartInfo = processInfo };
-                process.Start();
-
-                Thread.Sleep(3000);
-                if (process.CloseMainWindow() is false) process.Kill();
+                var filePaths = Directory.EnumerateFiles(folderPath);
+                foreach (var path in filePaths) Print(path);
             }
 
+            // Nach drucken alle Dateien löschen
             DeleteAllFiles();
+
+            // Bescheinigungen drucken
+            var filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Erstattung Lohnkosten für Feuerwehreinsatz.doc");
+            if (File.Exists(filePath)) 
+                for (int i = 0; i < _numberOfSheets; i++) Print(filePath);
 
             return true;
         }
         catch (Exception e)
         {
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Druck die Datei für den angegebenen Pfad über den ausgewählten Windows Standarddrucker aus.
+    /// </summary>
+    /// <param name="path">Dateipfad des Lohnausfalls bzw. der Bescheinigung</param>
+    private void Print(string path)
+    {
+        try
+        {
+            var command = $"Start-Process –FilePath \"{path}\" -verb Print";
+            ProcessStartInfo processInfo = new("Powershell.exe", command);
+
+            Process process = new() { StartInfo = processInfo };
+            process.Start();
+
+            Thread.Sleep(3000);
+            if (process.CloseMainWindow() is false) process.Kill();
+        }
+        catch (Exception e)
+        {
+            Snackbar.Add(e.Message, Severity.Error);
         }
     }
 

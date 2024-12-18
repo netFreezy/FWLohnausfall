@@ -104,13 +104,7 @@
     {
         try
         {
-            Member clonedMember = new()
-            {
-                Id = member.Id,
-                Firstname = member.Firstname,
-                Lastname = member.Lastname,
-                Residence = member.Residence
-            };
+            Member clonedMember = CloneMember(member);
 
             DialogOptions options = new() { MaxWidth = MaxWidth.Large, CloseButton = true, CloseOnEscapeKey = true, BackdropClick = true };
             DialogParameters<DeleteMemberDialog> parameters = new () { { x => x.Member, clonedMember }, };
@@ -171,5 +165,8 @@
         if (member.Residence!.Name!.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
             return true;
         return false;
+    }
+
+    private Member CloneMember(Member member) => new() { Id = member.Id, Firstname = member.Firstname, Lastname = member.Lastname,  Residence = member.Residence };
     }
 }

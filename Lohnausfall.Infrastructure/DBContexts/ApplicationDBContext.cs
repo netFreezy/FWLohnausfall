@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System.Reflection.Metadata;
 
 namespace Lohnausfall.Core.Models
 {
