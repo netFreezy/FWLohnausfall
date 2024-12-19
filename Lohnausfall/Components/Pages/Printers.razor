@@ -1,5 +1,6 @@
 ﻿@page "/drucker"
 
+@implements IDisposable
 @inject ISnackbar Snackbar
 
 @using System.Runtime.InteropServices
@@ -7,20 +8,37 @@
 @using System.Collections.ObjectModel
 @using System.Drawing.Printing
 @using Lohnausfall.Core.Models
+@using System.Management;
 
 <PageTitle>Lohnausfall - Feuerwehr Saalhausen</PageTitle>
 
-<MudStack Row Justify=Justify.SpaceBetween>
-    <MudText Typo=Typo.h4 Color=Color.Secondary Style="margin-bottom: 0px">Drucker</MudText>
-</MudStack>
+@if (_installedPrinters is not null && _installedPrinters.Any())
+{
+    <MudStack Row Justify=Justify.SpaceBetween>
+        <MudText Typo=Typo.h4 Color=Color.Secondary Style="margin-bottom: 0px">Drucker</MudText>
+    </MudStack>
 
-<MudSelect T=Core.Models.WindowsPrinter Style="margin-top: 22px" Variant=Variant.Outlined Adornment=Adornment.End AdornmentIcon=@Icons.Material.Filled.Print 
-    AnchorOrigin=Origin.BottomCenter Label="Drucker auswählen" Value=_selectedPrinter ValueChanged="(value) => { _selectedPrinter = value; ChangeDefaultPrinter(); }">
-    @foreach (var printer in _installedPrinters)
-    {
-        <MudSelectItem T=Core.Models.WindowsPrinter Value=printer>@printer.Name</MudSelectItem>
-    }
-</MudSelect>
+    <MudSelect T=Core.Models.WindowsPrinter Style="margin-top: 22px" Variant=Variant.Outlined Adornment=Adornment.End AdornmentIcon=@Icons.Material.Filled.Print
+               ToStringFunc=@(printer => printer is not null ? printer.Name : "") AnchorOrigin=Origin.BottomCenter Label="Drucker auswählen" Value=_selectedPrinter
+               ValueChanged="(value) => { _selectedPrinter = value; ChangeDefaultPrinter(); }">
+        @foreach (var printer in _installedPrinters)
+        {
+            <MudSelectItem T=Core.Models.WindowsPrinter Value=printer>@printer.Name</MudSelectItem>
+        }
+    </MudSelect>
+
+    <MudText Typo=Typo.h6 Style="margin-top: 10px" Color=Color.Secondary>
+        Drucker Status
+        <MudChip Variant=Variant.Text T="string" Color=@GetStatusColor(_selectedPrinter!.Status)>@_selectedPrinter.Status</MudChip>
+    </MudText>
+}
+else
+{
+    <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: row">
+        <MudIcon Style="margin-right: 20px" Size=Size.Large Icon=@Icons.Material.Filled.Print />
+        <h4>Keinen Drucker gefunden</h4>
+    </div>
+}
 
 @code {
     public class Printer
@@ -33,25 +51,109 @@
     private Core.Models.WindowsPrinter? _selectedPrinter;
     private PrinterSettings _printerSettings = new();
 
-    protected override Task OnInitializedAsync()
+    private System.Timers.Timer _timer = new(5000);
+    private string[] _excludedPrinters = new[] { "Fax", "OneNote", "Microsoft" };
+
+    protected override async Task OnInitializedAsync()
     {
         try
         {
-            var printers = new List<Core.Models.WindowsPrinter>();
+            await GetAllPrintersAsync();
 
-            foreach (var printer in PrinterSettings.InstalledPrinters)
-                printers.Add(new Core.Models.WindowsPrinter(_installedPrinters.Count, printer.ToString()!, printer.ToString()! == _printerSettings.PrinterName));
-
-            _selectedPrinter = printers.FirstOrDefault(printer => printer.IsDefaultPrinter == true);
-            _installedPrinters = printers.OrderBy(printer => printer.Name).ToList();
-
-            return base.OnInitializedAsync();
+            // Drucker alle 5 Sekunden neu holen
+            _timer.Elapsed += async (sender, eventArgs) => await GetAllPrintersAsync();
+            _timer.Start();
         }
         catch(Exception e)
         {
             Snackbar.Add(e.Message, Severity.Error);
-            return base.OnInitializedAsync();
         }
+    }
+
+    private async Task GetAllPrintersAsync()
+    {
+        try
+        {
+            _ = InvokeAsync(async () =>
+            {
+                await Task.Yield();
+
+                var printers = PrinterSettings.InstalledPrinters
+                .Cast<string>()
+                .Where(printer => !_excludedPrinters.Any(keyword => printer.Contains(keyword)))
+                .Select((printer, index) => new Core.Models.WindowsPrinter(index, printer, printer == _printerSettings.PrinterName))
+                .OrderBy(printer => printer.Name)
+                .ToList();
+
+                _installedPrinters = printers;
+                _selectedPrinter = printers.FirstOrDefault(printer => printer.IsDefaultPrinter);
+
+                GetPrintersStatus();
+
+                StateHasChanged();
+            });
+
+        }
+        catch (Exception e)
+        {
+            Snackbar.Add(e.Message, Severity.Error);
+        }
+    }
+
+    private void GetPrintersStatus()
+    {
+        try
+        {
+            string query = "SELECT Name, PrinterStatus FROM Win32_Printer";
+
+            using (ManagementObjectSearcher searcher = new(query))
+            using (ManagementObjectCollection printers = searcher.Get())
+            {
+                foreach (ManagementObject printer in printers)
+                {
+                    var printerName = printer["Name"]?.ToString() ?? "Unbekannt";
+                    if (_excludedPrinters.Contains(printerName)) continue;
+
+                    var printerStatus = GetPrinterStatus(printer);
+
+                    var installedPrinter = _installedPrinters.FirstOrDefault(printer => printer.Name == printerName);
+                    if (installedPrinter is null) continue;
+
+                    installedPrinter.Status = printerStatus;
+                    installedPrinter.IsOnline = printerStatus is not "Offline" && printerStatus is not "Unbekannt";
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Snackbar.Add(e.Message, Severity.Error);
+        }
+    }
+
+    private string GetPrinterStatus(ManagementObject printer)
+    {
+        int status = Convert.ToInt32(printer["PrinterStatus"] ?? 0);
+        return status switch
+        {
+            3 => "Bereit",
+            4 => "Druckt",
+            5 => "Papierproblem",
+            7 => "Offline",
+            _ => "Unbekannt"
+        };
+    }
+
+    private Color GetStatusColor(string status)
+    {
+        return status switch
+        {
+           "Bereit" => Color.Tertiary,
+           "Druckt" => Color.Warning,
+           "Papierproblem" => Color.Error,
+           "Offline" => Color.Primary,
+           "Unbekannt" => Color.Primary,
+           _ => Color.Primary
+        };
     }
 
     private void ChangeDefaultPrinter()
@@ -66,4 +168,6 @@
             Snackbar.Add(e.Message, Severity.Error);
         }
     }
+
+    public void Dispose() => _timer.Dispose();
 }
